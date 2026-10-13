@@ -2,11 +2,11 @@
 
 在 [Claude Code](https://claude.com/claude-code) 裡用 LINE：[enil](https://github.com/Unayung/enil) 終端機 TUI 的移植，做成一個 Claude Code mod，開在 Claude Code 的面板裡。
 
-![Claude Code 裡開著 LINE 面板：左邊是平常的對話，右邊是聊天室清單與打開的聊天室](docs/chat.png)
+![Claude Code 裡開著 LINE 面板：左邊是平常的對話，右邊是聊天室清單與打開的聊天室](docs/claude-code-with-enil.png)
 
 | 清單與預覽 | 選一則訊息按 r 回表情 |
 |---|---|
-| ![聊天室清單：分區、未讀數，游標停下來右邊直接預覽](docs/list.png) | ![表情回應選單](docs/react.png) |
+| ![聊天室清單：分區、未讀數，游標停下來右邊直接預覽](docs/claude-code-enil-list.png) | ![表情回應選單](docs/claude-code-enil-react.png) |
 
 <sub>截圖是真的 Claude Code 跑這個 mod（`/enil` 打開的面板停在右邊），聊天內容是假的 daemon 給的範例資料。大頭貼在這裡是名字的第一個字；終端機支援 kitty 圖片協定時會是照片。</sub>
 
