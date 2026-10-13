@@ -34,7 +34,7 @@ import type {
 } from '../types'
 import { BRIDGE } from './bridge'
 import { mentionSpans, parseChats, parseMsg, parseMsgs } from './model'
-import { builtins, CLAUDE, claudeCode, OMARCHY, parseOmarchy, parseOmarchyBundle, parseSlk, TERMINAL, terminal } from './themes'
+import { builtins, CLAUDE, claudeCode, OMARCHY, parseOmarchy, parseOmarchyBundle, parseSlk, TERMINAL, terminal, themeKey } from './themes'
 
 type $ = EngineInterface
 
@@ -252,7 +252,7 @@ async function loadPrefs($: $) {
 }
 
 async function loadThemes($: $) {
-  const palettes: Record<string, Palette> = { [CLAUDE]: claudeCode, [TERMINAL]: terminal, ...builtins() }
+  const palettes: Record<string, Palette> = { [CLAUDE]: claudeCode, [TERMINAL]: terminal }
   const names = [CLAUDE, OMARCHY, TERMINAL]
   // Omarchy：daemon 那台的主題 —— 目前用的那個，加上每一個裝著的主題（官方的與自己裝的）。
   const script =
@@ -264,11 +264,23 @@ async function loadThemes($: $) {
     .catch(() => '')
   const bundle = parseOmarchyBundle(raw)
   palettes[OMARCHY] = parseOmarchy(bundle.current)
-  for (const [name, palette] of bundle.themes) {
+  // daemon 那台的 omarchy 主題用原本的名字；內建的同一個主題（Tokyo Night、Catppuccin Mocha…）
+  // 就不再列，以 omarchy 那份為準。兩邊合起來照字母排。
+  const renamed: Record<string, string> = {}
+  const omarchyKeys = new Map(bundle.themes.map(([n]) => [themeKey(n), n]))
+  const listed: [string, Palette][] = [...bundle.themes]
+  for (const [name, palette] of Object.entries(builtins())) {
+    const same = omarchyKeys.get(themeKey(name))
+    if (same) renamed[name] = same
+    else listed.push([name, palette])
+  }
+  for (const [raw, palette] of listed.sort((x, y) => x[0].localeCompare(y[0]))) {
+    // 有個 omarchy 主題就叫「omarchy」：跟上面「目前的 Omarchy 主題」那項撞名，改個名字留著。
+    const name = raw === OMARCHY || raw === CLAUDE || raw === TERMINAL ? `${raw} 主題` : raw
+    if (palettes[name]) continue
     palettes[name] = palette
     names.push(name)
   }
-  names.push(...Object.keys(builtins()))
   for (const dir of [`${home}/.config/enil/themes`, `${home}/.config/slk/themes`]) {
     const files = await $.fs.list(dir).catch(() => [])
     for (const f of [...files].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -280,8 +292,10 @@ async function loadThemes($: $) {
       }
     }
   }
-  const saved = await $.store.get('theme')
-  const chosen = typeof saved === 'string' && palettes[saved] ? saved : CLAUDE
+  // 存著的是舊名字（0.3.0 的「Omarchy · 名稱」、或被合併掉的內建主題）就換成現在對應的那個。
+  const stored = await $.store.get('theme')
+  const saved = typeof stored === 'string' ? (renamed[stored] ?? stored.replace(/^Omarchy · /, '')) : ''
+  const chosen = palettes[saved] ? saved : CLAUDE
   await update($, themes, () => ({ names, palettes, chosen }))
 }
 

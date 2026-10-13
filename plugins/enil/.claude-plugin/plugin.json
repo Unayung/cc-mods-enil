@@ -1,6 +1,6 @@
 {
   "name": "enil",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "LINE inside Claude Code: the enil TUI as a pane (chat list, chat view, reply, stickers, search, VIP), talking to the enil daemon locally or over ssh",
   "author": {
     "name": "Unayung"

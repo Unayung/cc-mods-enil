@@ -139,10 +139,26 @@ export function parseOmarchy(raw: string): Palette {
   }
 }
 
-/** 主題資料夾名稱 → 選單上的名字：tokyo-night → Omarchy · Tokyo Night。 */
+/** 主題資料夾名稱 → 選單上的名字：tokyo-night → Tokyo Night。 */
 export function omarchyThemeName(dir: string): string {
-  const words = dir.split(/[-_ ]+/).filter(Boolean).map(w => w[0]!.toUpperCase() + w.slice(1))
-  return `${OMARCHY} · ${words.join(' ')}`
+  return dir
+    .split(/[-_ ]+/)
+    .filter(Boolean)
+    .map(w => w[0]!.toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+/**
+ * 比對「是不是同一個主題」用的名字：小寫、去掉重音與符號，再去掉結尾的 dark／mocha
+ * （內建的 Catppuccin Mocha、Gruvbox Dark、Rosé Pine 跟 omarchy 的 catppuccin、gruvbox、rose-pine 是同一個）。
+ */
+export function themeKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/(dark|mocha)$/, '')
 }
 
 /**

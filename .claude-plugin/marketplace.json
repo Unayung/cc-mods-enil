@@ -11,7 +11,7 @@
       "name": "enil",
       "source": "./plugins/enil",
       "description": "LINE inside Claude Code: chat list, chat view, reply, stickers, search and VIP, talking to the enil daemon locally or over ssh",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

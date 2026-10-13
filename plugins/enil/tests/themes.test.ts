@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { omarchyThemeName, parseOmarchy, parseOmarchyBundle } from '../hooks/themes'
+import { builtins, omarchyThemeName, parseOmarchy, parseOmarchyBundle, themeKey } from '../hooks/themes'
 
 // 官方主題的寫法：顏色名稱。
 const NAMED = `accent = "#7aa2f7"
@@ -50,8 +50,18 @@ test('omarchy colors.toml in the numbered format, with an unreadable selection c
 test('a bundle of themes: names, the installed one wins over the official one, and the current one', () => {
   const raw = `@@@ tokyo-night\n${NAMED}\n@@@ catppuccin-latte\n${NUMBERED}\n@@@ tokyo-night\n${NUMBERED}\n@@@ current\n${NAMED}`
   const b = parseOmarchyBundle(raw)
-  expect(b.themes.map(([n]) => n)).toEqual(['Omarchy · Catppuccin Latte', 'Omarchy · Tokyo Night'])
+  expect(b.themes.map(([n]) => n)).toEqual(['Catppuccin Latte', 'Tokyo Night'])
   expect(b.themes[1]![1].accent).toBe('#89b4fa')
   expect(parseOmarchy(b.current).accent).toBe('#7aa2f7')
-  expect(omarchyThemeName('rose-pine-dark')).toBe('Omarchy · Rose Pine Dark')
+  expect(omarchyThemeName('rose-pine-dark')).toBe('Rose Pine Dark')
+})
+
+test('built-in themes that are the same as an omarchy theme are matched by name', () => {
+  const omarchy = ['tokyo-night', 'catppuccin', 'catppuccin-latte', 'gruvbox', 'rose-pine', 'nord', 'kanagawa', 'everforest'].map(omarchyThemeName)
+  const keys = new Set(omarchy.map(themeKey))
+  const dup = Object.keys(builtins()).filter(n => keys.has(themeKey(n)))
+  expect(dup.sort()).toEqual(['Catppuccin Latte', 'Catppuccin Mocha', 'Everforest Dark', 'Gruvbox Dark', 'Kanagawa', 'Nord', 'Rosé Pine', 'Tokyo Night'])
+  // 沒有對應的留著。
+  expect(keys.has(themeKey('Dracula'))).toBe(false)
+  expect(keys.has(themeKey('Cyberpunk Neon'))).toBe(false)
 })

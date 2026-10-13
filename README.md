@@ -137,6 +137,10 @@ claude plugin test plugins/enil      # 測試用假的 daemon，不會連到 LIN
 
 ## 更新紀錄
 
+### 0.3.1
+
+- 主題選單不再重複：Omarchy 主題用原本的名字（Tokyo Night，不是「Omarchy · Tokyo Night」）；內建主題跟 Omarchy 主題是同一個的（Tokyo Night、Catppuccin Mocha、Gruvbox Dark…）只留 Omarchy 那份，全部照字母排。之前存著的選擇會換成對應的那個。
+
 ### 0.3.0
 
 - **Omarchy 主題**：Ctrl-Y 的主題選單列出 daemon 那台裝著的每一個 Omarchy 主題（`~/.local/share/omarchy/themes` 與 `~/.config/omarchy/themes`，同名時自己裝的優先），不只目前用的那個。
