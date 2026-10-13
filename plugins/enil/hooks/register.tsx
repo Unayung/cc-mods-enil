@@ -34,7 +34,7 @@ import type {
 } from '../types'
 import { BRIDGE } from './bridge'
 import { mentionSpans, parseChats, parseMsg, parseMsgs } from './model'
-import { builtins, CLAUDE, claudeCode, OMARCHY, parseOmarchy, parseSlk, TERMINAL, terminal } from './themes'
+import { builtins, CLAUDE, claudeCode, OMARCHY, parseOmarchy, parseOmarchyBundle, parseSlk, TERMINAL, terminal } from './themes'
 
 type $ = EngineInterface
 
@@ -253,14 +253,22 @@ async function loadPrefs($: $) {
 
 async function loadThemes($: $) {
   const palettes: Record<string, Palette> = { [CLAUDE]: claudeCode, [TERMINAL]: terminal, ...builtins() }
-  const names = [CLAUDE, OMARCHY, TERMINAL, ...Object.keys(builtins())]
-  // Omarchy：daemon 那台的系統主題（不是 omarchy 就跟「終端機」一樣）。
-  const omarchy = opts.host
-    ? await run($, ['ssh', ...SSH_OPTS, opts.host, 'cat ~/.local/state/omarchy/current/theme/colors.toml'], { timeoutMs: 10000 })
-        .then(r => (r.exitCode === 0 ? r.stdout : ''))
-        .catch(() => '')
-    : await $.fs.read(`${home}/.local/state/omarchy/current/theme/colors.toml`).catch(() => '')
-  palettes[OMARCHY] = parseOmarchy(omarchy)
+  const names = [CLAUDE, OMARCHY, TERMINAL]
+  // Omarchy：daemon 那台的主題 —— 目前用的那個，加上每一個裝著的主題（官方的與自己裝的）。
+  const script =
+    'for d in ~/.local/share/omarchy/themes/* ~/.config/omarchy/themes/*; do ' +
+    '[ -f "$d/colors.toml" ] && printf "@@@ %s\\n" "${d##*/}" && cat "$d/colors.toml" && echo; done; ' +
+    'printf "@@@ current\\n"; cat ~/.local/state/omarchy/current/theme/colors.toml 2>/dev/null; true'
+  const raw = await run($, opts.host ? ['ssh', ...SSH_OPTS, opts.host, script] : ['sh', '-c', script], { timeoutMs: 15000 })
+    .then(r => (r.exitCode === 0 ? r.stdout : ''))
+    .catch(() => '')
+  const bundle = parseOmarchyBundle(raw)
+  palettes[OMARCHY] = parseOmarchy(bundle.current)
+  for (const [name, palette] of bundle.themes) {
+    palettes[name] = palette
+    names.push(name)
+  }
+  names.push(...Object.keys(builtins()))
   for (const dir of [`${home}/.config/enil/themes`, `${home}/.config/slk/themes`]) {
     const files = await $.fs.list(dir).catch(() => [])
     for (const f of [...files].sort((a, b) => a.name.localeCompare(b.name))) {

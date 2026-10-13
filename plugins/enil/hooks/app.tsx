@@ -1806,7 +1806,7 @@ function drawOverlays(st: S, g: Grid, t: Theme, slots: Slot[], media: (k: string
   if (ov.t === 'theme') {
     const names = props.themes.names
     const h = Math.max(5, Math.min(names.length + 2, g.h - 2))
-    const area = centered(full, 44, h)
+    const area = centered(full, 52, h)
     clear(area)
     g.frame(area, accent, [[' 主題 ', bold]], [[' ↑↓ 預覽   Enter 套用   q 還原 ']])
     const i = inner(area)
@@ -1814,7 +1814,7 @@ function drawOverlays(st: S, g: Grid, t: Theme, slots: Slot[], media: (k: string
     names.slice(start, start + i.h).forEach((n, k) => {
       const picked = start + k === ov.pick
       pickRow(i, i.y + k, picked)
-      const nt = n === 'Claude Code' ? '  跟著 Claude Code' : n === 'Omarchy' ? '  跟著系統主題' : n === '終端機' ? '  用終端機的配色' : ''
+      const nt = n === 'Claude Code' ? '  跟著 Claude Code' : n === 'Omarchy' ? '  跟著目前的 omarchy 主題' : n === '終端機' ? '  用終端機的配色' : ''
       g.spans(i.x, i.y + k, [[picked ? '▌ ' : '  ', accent], [n, picked ? { fg: t.accent, b: true } : base], [nt, t.dim]])
     })
   }

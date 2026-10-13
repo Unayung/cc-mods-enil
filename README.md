@@ -17,7 +17,7 @@
 - 選一則訊息後：表情回應、收回、轉傳、跟著貼、開附件（圖片在面板裡看、語音直接播）
 - 搜尋全部聊天室與好友、搜尋訊息存檔（比 LINE 保留的兩週更早的也找得到）
 - VIP、分類、收合狀態、最近的貼圖跟 TUI 共用同一份（存在 daemon 那台）
-- 主題：跟著 Claude Code、Omarchy、終端機，加上 15 個內建主題與 slk 格式的自訂主題
+- 主題：跟著 Claude Code、目前的 Omarchy 主題、終端機；daemon 那台裝著的每一個 Omarchy 主題（官方的與自己裝的，例如 Tokyo Night、Catppuccin）；15 個內建主題與 slk 格式的自訂主題
 - 新訊息的 toast、桌面通知、狀態列的未讀數
 
 ## 需要什麼
@@ -136,6 +136,12 @@ claude plugin test plugins/enil      # 測試用假的 daemon，不會連到 LIN
 ```
 
 ## 更新紀錄
+
+### 0.3.0
+
+- **Omarchy 主題**：Ctrl-Y 的主題選單列出 daemon 那台裝著的每一個 Omarchy 主題（`~/.local/share/omarchy/themes` 與 `~/.config/omarchy/themes`，同名時自己裝的優先），不只目前用的那個。
+- 修：新版 Omarchy 主題的 `colors.toml` 用顏色名稱（`red`、`dark_foreground`…）而不是 `color0`–`color15`，之前次要文字、警告、錯誤的顏色都讀不到。兩種寫法現在都認。
+- 主題的選取色太亮、上面的字會看不見時，改用背景調亮一點。
 
 ### 0.2.0
 

@@ -90,23 +90,80 @@ function shade(c: string, amount: number): string {
   return '#' + [mix(r), mix(g), mix(b)].map(v => v.toString(16).padStart(2, '0')).join('')
 }
 
+/** 相對亮度（0 暗 … 1 亮），用來判斷兩個顏色放在一起看不看得清楚。 */
+function luminance(c: string): number {
+  const n = parseInt(c.slice(1), 16)
+  const ch = (v: number) => {
+    const x = v / 255
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255)
+}
+
+const contrast = (a: string, b: string) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x! + 0.05) / (y! + 0.05)
+}
+
+/**
+ * omarchy 主題的 colors.toml。兩種寫法都認：新的（官方主題）用顏色名稱
+ * （red、yellow、dark_foreground…），舊的（很多自己裝的主題）用終端機色號 color0–15。
+ */
 export function parseOmarchy(raw: string): Palette {
   if (!raw.trim()) return terminal
-  const get = (k: string) => hex(lookup(raw, k))
-  const bg = get('background')
-  return {
-    accent: get('accent') ?? get('color4') ?? 'green',
-    onAccent: bg ?? 'black',
-    selection: get('selection'),
-    bg,
-    sidebarBg: bg ? shade(bg, 0.04) : undefined,
-    text: get('foreground'),
-    muted: get('color8'),
-    border: get('color8'),
-    warning: get('color3') ?? 'yellow',
-    error: get('color1') ?? 'red',
-    ok: get('color2') ?? 'green',
+  const get = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = hex(lookup(raw, k))
+      if (v) return v
+    }
+    return undefined
   }
+  const bg = get('background')
+  const text = get('foreground')
+  // 選取列的底色：selection 常常是給「反白＋深色字」用的亮色（例如 #f5e0dc），拿來當清單的底色
+  // 會讓上面的字看不見。跟文字的對比不夠就改用背景調亮一點。
+  const sel = get('selection', 'lighter_background')
+  const selection = sel && text && contrast(sel, text) >= 3 ? sel : bg ? shade(bg, 0.08) : undefined
+  return {
+    accent: get('accent', 'color4', 'blue') ?? 'green',
+    onAccent: bg ?? 'black',
+    selection,
+    bg,
+    sidebarBg: get('dark_background') ?? (bg ? shade(bg, 0.04) : undefined),
+    text,
+    muted: get('dark_foreground', 'color8', 'muted'),
+    border: get('muted', 'color8', 'dark_foreground'),
+    warning: get('yellow', 'color3') ?? 'yellow',
+    error: get('red', 'color1') ?? 'red',
+    ok: get('green', 'color2') ?? 'green',
+  }
+}
+
+/** 主題資料夾名稱 → 選單上的名字：tokyo-night → Omarchy · Tokyo Night。 */
+export function omarchyThemeName(dir: string): string {
+  const words = dir.split(/[-_ ]+/).filter(Boolean).map(w => w[0]!.toUpperCase() + w.slice(1))
+  return `${OMARCHY} · ${words.join(' ')}`
+}
+
+/**
+ * 一次讀回來的所有 omarchy 主題：每個以「@@@ 資料夾名稱」開頭，接著是它的 colors.toml。
+ * 後面的蓋掉前面的（自己裝的 ~/.config/omarchy/themes 排在官方的後面，跟 omarchy 一樣優先）。
+ * 「current」是目前用的那個。
+ */
+export function parseOmarchyBundle(raw: string): { current: string; themes: [string, Palette][] } {
+  const byDir = new Map<string, string>()
+  let current = ''
+  for (const part of raw.split(/^@@@ /m).slice(1)) {
+    const nl = part.indexOf('\n')
+    const dir = (nl < 0 ? part : part.slice(0, nl)).trim()
+    const body = nl < 0 ? '' : part.slice(nl + 1)
+    if (dir === 'current') current = body
+    else if (dir && body.trim()) byDir.set(dir, body)
+  }
+  const themes = [...byDir.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map(dir => [omarchyThemeName(dir), parseOmarchy(byDir.get(dir)!)] as [string, Palette])
+  return { current, themes }
 }
 
 /** slk 的主題檔：`name = "…"`，加一段 [colors]。缺名字、primary 或背景就不算主題。 */
