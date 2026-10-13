@@ -78,6 +78,46 @@ daemon 在別台的話，到 `/config` 把 **Daemon host** 設成那台的 ssh �
 - 名字對到好幾個聊天室時，Claude 會列出來問你是哪一個
 - 工具只會擬稿：送出一定是你在面板裡按的 Enter
 
+## 反過來：在 LINE 裡問 Claude（enil-claude）
+
+`bridge/enil-claude/` 是另一個小程式，不是 mod。它跑在 daemon 那台機器上，在 LINE「跟自己的聊天」裡發 `cc` 開頭的訊息，就會交給 Claude Code，回答送回同一個聊天室。人在外面、手上只有手機時，也能問家裡那台的程式碼。
+
+```
+cc 這個專案的登入流程在哪裡？
+🤖 ⏳ 收到，想一下…
+🤖 在 src/auth/login.ts，流程是…
+```
+
+**它只能讀**：Claude 只拿到 Read、Grep、Glob，不載入任何 MCP server，其他工具一律拒絕。可以讀檔、回答問題，不能改檔、不能跑指令。
+
+**它只聽你自己**：只看「跟自己的聊天」裡、你自己發的、`cc` 開頭的文字訊息。別人傳給你的、群組裡的、它自己的回覆（`🤖` 開頭），一律不理。
+
+```sh
+# 在 daemon 那台，需要 Node.js 跟登入好的 claude
+node bridge/enil-claude/enil-claude.mjs --cwd ~/code/my-project
+```
+
+| 在 LINE 裡打 | 做什麼 |
+|---|---|
+| `cc <問題>` | 問 Claude，接著上一段對話 |
+| `cc /new` | 開新的對話 |
+| `cc /cd <目錄>` | 換專案目錄（也會開新的對話） |
+| `cc /status`、`cc /stop`、`cc /help` | 狀態、停掉正在跑的、說明 |
+
+- 一次只跑一個；長的回答會切成幾則（最多 5 則）；一次最多跑 10 分鐘（`--timeout`）。
+- 目前的目錄跟對話存在 daemon state 目錄的 `enil-claude.json`，重開後會接著用。
+- 「跟自己的聊天」對不到的話，用 `enil-claude chats` 列出 mid，再用 `--chat <mid>` 指定。
+- 其他選項：`--prefix`、`--claude`、`--state-dir`，見 `--help`。
+- 要一直開著的話，用 systemd user service、launchd 或 tmux 跑。
+
+跟 enil 本身一樣，這不是官方支援的用法：機器人自動回訊息，也是在用逆向來的協定。另外，你問的程式碼跟回答都會留在 LINE 的聊天紀錄裡。
+
+測試（用假的 daemon 跟假的 claude，不會連到 LINE）：
+
+```sh
+node --test 'bridge/enil-claude/*.test.mjs'
+```
+
 ## 設定
 
 `/config` 裡的 enil：
