@@ -8,6 +8,7 @@ const CHATS = [
   { mid: 'uALICE', type: 'USER', name: 'Alice', unread: 2, lastTime: NOW - 60000, lastText: '明天見', lastFrom: 'Alice' },
   { mid: 'cHIKE', type: 'GROUP', name: '週末爬山團', unread: 0, lastTime: NOW - 3600000, lastText: '七點捷運站', lastFrom: '小安' },
   { mid: 'uBOB', type: 'USER', name: 'Bob', unread: 0, lastTime: NOW - 86400000 * 3, lastText: '好喔', lastFrom: 'Bob' },
+  { mid: 'uALLY', type: 'USER', name: 'Ally', unread: 0, lastTime: NOW - 86400000 * 9, lastText: '掰', lastFrom: 'Ally' },
 ]
 const HISTORY: Record<string, unknown[]> = {
   uALICE: [
@@ -106,6 +107,7 @@ async function boot($: Engine, on: On, setup: Setup & { columns?: number } = {})
     return { value: undefined }
   })
   on('command.register', () => ({ value: { command: 'enil' } }))
+  on('tool.register', () => ({ value: { tool: 'mcp__enil__draft' } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('ui.status', () => ({ value: undefined }))
   on('session.start', () => ({ cwd: '/tmp' }))
@@ -309,4 +311,26 @@ test('help and theme overlays open and close', { options: { images: 'off' }, tim
   expect(await text()).toContain('跟著 Claude Code')
   await keys('q')
   expect(await text()).not.toContain('跟著 Claude Code')
+})
+
+test('the draft tool fills the chat input in the pane and sends nothing', { options: { images: 'off' }, timeoutMs: 20000 }, async ($, on) => {
+  const { d, text, until, keys } = await boot($, on)
+  const res = await $.tool.call({ tool: 'mcp__enil__draft', to: 'Alice', text: 'hello from bot' } as never)
+  expect(JSON.stringify(res)).toContain('not sent')
+  await until(async () => (await text()).includes('hello from bot'))
+  expect(await text()).toContain('"Alice "')
+  expect(await text()).toContain('Claude 擬好了這則訊息')
+  expect(d.calls.some(c => c.cmd === 'send')).toBe(false)
+  // 人按 Enter 才送。
+  await keys('return')
+  expect(await until(() => d.calls.some(c => c.cmd === 'send'))).toBe(true)
+  expect(d.calls.find(c => c.cmd === 'send')).toMatchObject({ chat: 'uALICE', text: 'hello from bot' })
+})
+
+test('the draft tool lists the candidates when several chats match, and says so when none does', { options: { images: 'off' }, timeoutMs: 20000 }, async ($, on) => {
+  await boot($, on)
+  const several = await $.tool.call({ tool: 'mcp__enil__draft', to: 'al', text: 'hi' } as never)
+  expect(JSON.stringify(several)).toContain('Several LINE chats match')
+  const none = await $.tool.call({ tool: 'mcp__enil__draft', to: 'Zed', text: 'hi' } as never)
+  expect(JSON.stringify(none)).toContain('No LINE chat matches')
 })

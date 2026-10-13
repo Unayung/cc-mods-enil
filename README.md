@@ -71,6 +71,13 @@ daemon 在別台的話，到 `/config` 把 **Daemon host** 設成那台的 ssh �
 | Ctrl-B、Ctrl-Y | 清單寬窄、換主題 |
 | q | 關掉面板 |
 
+## 讓 Claude 幫你擬訊息
+
+跟 Claude 說「幫我跟 Gloria 說 明天晚上的會議改到八點」，它會用這個 mod 的 `draft` 工具：打開 LINE 面板、切到那個聊天室、把訊息放進輸入框。**它不會送出**，你看過、要改就改，在面板裡按 Enter 才送。
+
+- 名字對到好幾個聊天室時，Claude 會列出來問你是哪一個
+- 工具只會擬稿：送出一定是你在面板裡按的 Enter
+
 ## 設定
 
 `/config` 裡的 enil：
@@ -105,7 +112,7 @@ Mod 的環境沒有 socket，只能起行程。每個請求起一次 `node -e <b
 
 畫面是一個 Client（`hooks/app.tsx`），照 TUI 的做法畫進一張格子再交出去；圖片在 daemon 那台用 ImageMagick 轉成 PNG，由 hooks 模組疊在畫面算好的位置上。VIP、分類、收合、最近的貼圖直接讀寫 daemon state 目錄裡 TUI 用的那幾個檔。
 
-這個 mod 不在 system prompt 裡加任何東西，也不註冊工具給模型用；你的 LINE 訊息不會進到對話裡。
+這個 mod 不在 system prompt 裡加任何東西。它給模型一個工具 `draft`（見上面「讓 Claude 幫你擬訊息」），只能把字放進面板的輸入框，不能送出、也讀不到你的訊息；你的 LINE 訊息不會進到對話裡。
 
 ## 用之前要知道
 
@@ -127,6 +134,19 @@ claude --plugin-dir plugins/enil     # 從這份 checkout 載入
 claude plugin validate plugins/enil
 claude plugin test plugins/enil      # 測試用假的 daemon，不會連到 LINE
 ```
+
+## 更新紀錄
+
+### 0.2.0
+
+- **讓 Claude 幫你擬訊息**：新的 `draft` 工具。跟 Claude 說「幫我跟某某說…」，它會打開 LINE 面板、切到那個聊天室、把字放進輸入框，由你按 Enter 送出（Claude 自己不會送）。名字對到好幾個人時會先問你是哪一個。
+- 修：面板剛打開、還沒按過任何鍵時，每次重畫都會把畫面狀態重設（例如剛放進去的擬稿會不見）。
+- 修：打字時狀態列還一直顯示「點一下面板開始操作」。
+- 修：空的輸入框，游標蓋掉提示字的第一個字。
+
+### 0.1.0
+
+- 第一版：enil TUI 的清單、對話、回覆、貼圖、搜尋、VIP、分類、主題，在 Claude Code 面板裡。
 
 ## License
 

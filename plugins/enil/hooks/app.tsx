@@ -262,6 +262,7 @@ type S = {
   askedStickers: Record<string, true>
   /** 收到過按鍵或點擊：Client 拿到鍵盤時面板本身反而算沒焦點，不能只看 props.focused。 */
   engaged: boolean
+  lastDraft: number
 }
 
 function initial(props: AppProps): S {
@@ -300,6 +301,7 @@ function initial(props: AppProps): S {
     slots: [],
     askedStickers: {},
     engaged: false,
+    lastDraft: 0,
   }
 }
 
@@ -1519,7 +1521,8 @@ function draw(st: S, cols: number, rows: number): { grid: Grid; slots: Slot[]; w
   const sy = rows - 1
   let sx = g.put(0, sy, ` ${mode} `, chip) + 1
   if (st.open && !narrow) sx = g.put(sx, sy, `${fit(st.openName, 24)}  `, base)
-  const status = [st.status, props.status].sort((a, b) => b.at - a.at)[0]!
+  // hooks 那邊清空（text 是空的）只清它自己的；畫面自己的提示（例如 Claude 擬好的訊息）留著。
+  const status = [st.status, props.status].filter(x => x.text).sort((a, b) => b.at - a.at)[0] ?? st.status
   const statusLive = status.text && Date.now() - status.at < 12000
   // 右：VIP 的未讀、跟 daemon 的連線。
   const right: Span[] = []
@@ -1995,15 +1998,21 @@ function emit(g: Grid, Box: (p: never) => RenderElement, Text: (p: never) => Ren
 
 // ------------------------------------------------------------------ 進入點
 
+// 第一次 setState 之前 surface.state 是空的：狀態另外記在這裡，不然按鍵之前的每一次重畫都會從頭來過。
+const kept = new WeakMap<object, S>()
+
 export default function App(props: AppProps, surface: ClientSurface<S>): RenderElement {
-  let st = surface.state
+  let st = surface.state ?? kept.get(surface)
   const fresh = !st
   if (!st) {
     st = initial(props)
-    const get = () => surface.state ?? st!
+    kept.set(surface, st)
+    const get = () => surface.state ?? kept.get(surface) ?? st!
     const after = (s: S) => {
       flushPost(s, surface)
-      surface.setState({ ...s })
+      const next = { ...s }
+      kept.set(surface, next)
+      surface.setState(next)
     }
     surface.onKey(ev => {
       const s = get()
@@ -2053,6 +2062,17 @@ function absorb(st: S) {
       st.ov.text = r.text
       st.ov.matches = r.matches
     }
+  }
+  // Claude 擬好的訊息：打開那個聊天室，字放進輸入框（不送出）。
+  // 面板是被這個工具打開的話，這個 Client 是新的：還沒放過的擬稿（text 不是空的）都要放。
+  if (p.draft.seq > st.lastDraft && p.draft.text) {
+    st.lastDraft = p.draft.seq
+    op(st, 'draftTaken', { seq: p.draft.seq })
+    st.ov = null
+    openChat(st, p.draft.mid, p.draft.name)
+    st.input = p.draft.text
+    st.caret = graphemes(p.draft.text).length
+    note(st, 'Claude 擬好了這則訊息：看過沒問題按 Enter 送出（還沒送）', false)
   }
   if (p.esc > st.lastEsc) {
     st.lastEsc = p.esc

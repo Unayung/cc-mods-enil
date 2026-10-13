@@ -11,6 +11,7 @@ import type {
   AppProps,
   Chat,
   Conn,
+  Draft,
   MediaDims,
   Members,
   Msg,
@@ -76,6 +77,7 @@ const esc = atom({ plugin: 'enil', key: 'esc' } as const, 0)
 const escapable = atom({ plugin: 'enil', key: 'escapable' } as const, false)
 const playing = atom({ plugin: 'enil', key: 'playing' } as const, '')
 const stickerKeys = atom({ plugin: 'enil', key: 'stickerKeys' } as const, {} as Record<string, string>)
+const draft = atom({ plugin: 'enil', key: 'draft' } as const, { seq: 0, mid: '', name: '', text: '' } as Draft)
 
 // ------------------------------------------------------------------ 這個 session 的工作狀態
 // 都是可以重抓的東西：hot reload 會清掉，session.start 重新來過。
@@ -1006,6 +1008,11 @@ async function doOp($: $, o: Op) {
       return $.ui.close({ id: PANE })
     case 'status':
       return say($, str('text'), o.warn !== false)
+    case 'draftTaken': {
+      // 放進輸入框了：清掉，面板重開時不要再放一次。
+      const seq = Number(o.seq)
+      return update($, draft, cur => (cur.seq === seq ? { ...cur, text: '' } : cur))
+    }
   }
 }
 
@@ -1032,6 +1039,23 @@ export const register: Register = (on, options) => {
       description: 'LINE (enil): open the chat pane',
       argumentHint: '[close]',
       immediate: true,
+    })
+    await $.tool.register({
+      name: 'draft',
+      description:
+        'Put a LINE message into the enil pane for the user to review and send. Opens the chat in the LINE pane ' +
+        'and fills its input box; it does NOT send. The user checks it and presses Enter in the pane. ' +
+        '`to` is a chat name (person or group, as shown in LINE) or a chat mid. If several chats match, ' +
+        'the result lists them; ask the user which one and call again with its mid.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          to: { type: 'string', description: 'Chat name or mid' },
+          text: { type: 'string', description: 'The message text' },
+        },
+        required: ['to', 'text'],
+      },
+      isDeferred: false,
     })
     home = (await $.env.get('HOME')) ?? ''
     const base = (await $.env.get('PATH')) ?? '/usr/bin:/bin'
@@ -1081,6 +1105,45 @@ export const register: Register = (on, options) => {
     paneOpen = true
     if (Date.now() - lastChatsAt > 30000) void loadChats($)
     return { text: res.isPlaced ? 'LINE pane opened. Click it to type into it.' : `LINE pane waits: ${res.reason}` }
+  })
+
+  // Claude 只擬稿：打開聊天室、把字放進輸入框，送不送由人在面板裡按 Enter 決定。
+  on('tool.call', { tool: 'mcp__enil__draft' }, async ($, e) => {
+    const args = e as unknown as { to?: unknown; text?: unknown }
+    const to = String(args.to ?? '').trim()
+    const text = String(args.text ?? '')
+    if (!to || !text.trim()) return { result: 'Nothing drafted: both `to` and `text` are required.' }
+    let pool = await read($, chats)
+    const pick = (list: Chat[]) => {
+      const byMid = list.filter(c => c.mid === to)
+      if (byMid.length) return byMid
+      const exact = list.filter(c => c.name === to)
+      if (exact.length) return exact
+      return list.filter(c => c.name.toLowerCase().includes(to.toLowerCase()))
+    }
+    let hits = pick(pool)
+    if (hits.length === 0) {
+      try {
+        pool = parseChats(await rpc($, { cmd: 'chats', limit: 5000, query: to }, 60000))
+        hits = pick(pool)
+      } catch (err) {
+        return { result: `Could not reach the enil daemon: ${errText(err)}` }
+      }
+    }
+    if (hits.length === 0) return { result: `No LINE chat matches "${to}". Nothing drafted.` }
+    if (hits.length > 1) {
+      const list = hits.slice(0, 15).map(c => `- ${c.name} (${c.mid.startsWith('u') ? 'person' : 'group'}, mid ${c.mid})`).join('\n')
+      return { result: `Several LINE chats match "${to}"; ask the user which one, then call again with its mid:\n${list}` }
+    }
+    const chat = hits[0]!
+    await update($, draft, cur => ({ seq: cur.seq + 1, mid: chat.mid, name: chat.name, text }))
+    const res = await $.ui.open({ id: PANE, title: 'LINE', focus: true, closeOnEscape: true, rows: 40, columns: 100 })
+    paneOpen = true
+    return {
+      result:
+        `Drafted in the LINE pane for ${chat.name} (not sent). The user reviews it there and presses Enter to send` +
+        (res.isPlaced ? '.' : ` (the pane waits: ${res.reason}).`),
+    }
   })
 
   // Esc 不會送進 Client：它把焦點交回面板，面板再按 Esc 就關掉（closeOnEscape）。那個「關」攔下來：
@@ -1161,6 +1224,7 @@ export const register: Register = (on, options) => {
       focused: e.props.isFocused,
       playing: await read($, playing),
       stickerKeys: await read($, stickerKeys),
+      draft: await read($, draft),
     }
     while (props.view.msgs.length > 40 && JSON.stringify(props).length > 95000) {
       props.view = { ...props.view, msgs: props.view.msgs.slice(20), exhausted: true }

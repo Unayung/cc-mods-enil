@@ -114,6 +114,9 @@ export type Reply =
 
 export type Viewer = { id: string; key: string; error: string }
 
+/** Claude 擬好的訊息：畫面打開那個聊天室、放進輸入框，由人按 Enter 送出。seq 遞增。 */
+export type Draft = { seq: number; mid: string; name: string; text: string }
+
 export type Palette = {
   accent: string
   onAccent: string
@@ -167,6 +170,7 @@ export type AppProps = {
   playing: string
   /** 貼圖 id → 縮圖的「路徑@邊長」；'' = 拿不到。 */
   stickerKeys: Record<string, string>
+  draft: Draft
 }
 
 declare module 'claude-code' {
@@ -192,6 +196,7 @@ declare module 'claude-code' {
       escapable: boolean
       playing: string
       stickerKeys: Record<string, string>
+      draft: Draft
     }
   }
 }
