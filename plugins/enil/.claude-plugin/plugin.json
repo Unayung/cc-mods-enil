@@ -1,0 +1,74 @@
+{
+  "name": "enil",
+  "version": "0.1.0",
+  "description": "LINE inside Claude Code: the enil TUI as a pane (chat list, chat view, reply, stickers, search, VIP), talking to the enil daemon locally or over ssh",
+  "author": {
+    "name": "Unayung"
+  },
+  "homepage": "https://github.com/Unayung/cc-mods-enil",
+  "repository": "https://github.com/Unayung/cc-mods-enil",
+  "license": "MIT",
+  "keywords": [
+    "line",
+    "enil",
+    "chat",
+    "mod"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "host": {
+      "type": "string",
+      "title": "Daemon host",
+      "description": "ssh host where the enil daemon runs (e.g. home-server, a Host from ~/.ssh/config); empty = this machine",
+      "default": ""
+    },
+    "toast": {
+      "type": "string",
+      "title": "Toast on new messages",
+      "description": "all: every message not in the open chat; vip: VIP chats only; off",
+      "default": "vip",
+      "options": [
+        "all",
+        "vip",
+        "off"
+      ]
+    },
+    "toastSeconds": {
+      "type": "string",
+      "title": "Toast seconds",
+      "description": "How long a new-message toast stays",
+      "default": "6"
+    },
+    "notify": {
+      "type": "string",
+      "title": "Desktop notification",
+      "description": "Native notification through your terminal: all, vip, or off",
+      "default": "vip",
+      "options": [
+        "all",
+        "vip",
+        "off"
+      ]
+    },
+    "box": {
+      "type": "string",
+      "title": "Unread in status line",
+      "description": "statusline: show unread count (and waiting VIP chats) in the status line; off",
+      "default": "statusline",
+      "options": [
+        "statusline",
+        "off"
+      ]
+    },
+    "images": {
+      "type": "string",
+      "title": "Images",
+      "description": "Draw avatars, photos and stickers as pictures (kitty graphics terminals); off draws text placeholders only",
+      "default": "on",
+      "options": [
+        "on",
+        "off"
+      ]
+    }
+  }
+}
