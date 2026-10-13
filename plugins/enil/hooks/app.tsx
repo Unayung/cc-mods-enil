@@ -260,6 +260,8 @@ type S = {
   want: string[]
   slots: Slot[]
   askedStickers: Record<string, true>
+  /** 收到過按鍵或點擊：Client 拿到鍵盤時面板本身反而算沒焦點，不能只看 props.focused。 */
+  engaged: boolean
 }
 
 function initial(props: AppProps): S {
@@ -297,6 +299,7 @@ function initial(props: AppProps): S {
     want: [],
     slots: [],
     askedStickers: {},
+    engaged: false,
   }
 }
 
@@ -1488,8 +1491,10 @@ function draw(st: S, cols: number, rows: number): { grid: Grid; slots: Slot[]; w
     else if (!inChat) g.put(x, ii.y, '先選一個聊天室', t.dim)
     else if (!st.input && chipText) g.put(x, ii.y, 'Enter 送出　Backspace 取消附件', t.dim)
     else if (!st.input) {
-      g.put(x, ii.y, `傳訊息給 ${fit(st.openName, room - 12)}…`, t.dim)
-      if (props.focused) g.put(x, ii.y, ' ', { r: true })
+      // 游標在最前面，提示字接在它後面（不要蓋掉提示的第一個字）。
+      const hint = props.focused || st.engaged
+      if (hint) g.put(x, ii.y, ' ', { r: true })
+      g.put(x + (hint ? 1 : 0), ii.y, `傳訊息給 ${fit(st.openName, room - 13)}…`, t.dim)
     } else {
       const [vis, used] = inputWindow(st.input, st.caret, room)
       g.put(x, ii.y, vis, base)
@@ -1529,7 +1534,7 @@ function draw(st: S, cols: number, rows: number): { grid: Grid; slots: Slot[]; w
   const rw = right.reduce((n, [s]) => n + width(s), 0)
   const leftRoom = cols - rw - sx
   if (statusLive) g.put(sx, sy, fit(status.text, leftRoom), status.warn ? { fg: t.warning } : base)
-  else if (!props.focused) g.put(sx, sy, fit('點一下面板開始操作（滑鼠點進來，鍵盤才會送進這裡）', leftRoom), t.dim)
+  else if (!props.focused && !st.engaged) g.put(sx, sy, fit('點一下面板開始操作（滑鼠點進來，鍵盤才會送進這裡）', leftRoom), t.dim)
   else {
     let hx = sx
     for (const [k, what] of hints) {
@@ -2002,12 +2007,14 @@ export default function App(props: AppProps, surface: ClientSurface<S>): RenderE
     }
     surface.onKey(ev => {
       const s = get()
+      s.engaged = true
       key(s, ev)
       after(s)
     })
     surface.onPointer(ev => {
       if (ev.type !== 'down') return
       const s = get()
+      s.engaged = true
       pointer(s, ev)
       after(s)
     })
